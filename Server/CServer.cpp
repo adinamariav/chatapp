@@ -7,6 +7,23 @@
 #include <sys/socket.h> //contine definitiile structurilor necesare pentru socket-uri
 #include <netinet/in.h> //contine constante si structuri necesare pentru adrese internet
 #include <arpa/inet.h> //inet_addr, inet_ntoa
+#include <pthread.h>
+
+CServer* CServer::instance = NULL;
+
+CServer* CServer::getInstance(string IPaddress, int portNumber){
+    if(!CServer::instance){
+        CServer::instance=new CServer(IPaddress, portNumber);
+    }
+    return CServer::instance;
+}
+
+void CServer::destroyInstance(){
+    if(CServer::instance){
+        delete CServer::instance;
+        CServer::instance = NULL;
+    }
+}
 
 CServer::CServer(string IPaddress, int portNumber){
     serverSocket=new CSocket(IPaddress, portNumber);
@@ -33,6 +50,7 @@ void CServer::listenForConnections(int maxNumOfConnections){
 }
 
 void CServer::acceptConnections(){
+
     int clientSocketDescriptor;
     struct sockaddr_in clientSocketAddress;
     int clientSocketAddressLength = sizeof(clientSocketAddress);
@@ -47,8 +65,9 @@ void CServer::acceptConnections(){
         client->setDescriptor(clientSocketDescriptor);
         client->setAddress(clientSocketAddress);
         addClientToList(client);
-        readFromClients();
+        readFromClients(); //--thread
     }
+
 }
 
 void CServer::addClientToList(CSocket* clientSocket){
@@ -63,7 +82,6 @@ void CServer::readFromClients(){
     int clientPort;
 
     //as putea face o clasa parsator care imi va genera writer-ul necesar pt string ul respectiv, sa fie mai multe thread uri cu cate un writer
-
     list<CSocket*>::iterator it;
     for(it=clientSocketList.begin(); it!=clientSocketList.end();++it){
         read((*it)->getSocketDescriptor(), receivedMsg, sizeof(receivedMsg)); //the read will block until there is smth to read in the socket, after the client has executed a write() - it returns the number of charachters read
