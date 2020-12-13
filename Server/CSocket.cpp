@@ -46,6 +46,10 @@ sockaddr_in CSocket::getSocketAddress(){
     return socketAddress;
 }
 
+/*pollfd& CSocket::getPollSocketDescriptor(){
+    return socketDescriptor;
+}*/
+
 void CSocket::setDescriptor(int descriptor){
     socketDescriptor=descriptor;
 }
@@ -53,3 +57,11 @@ void CSocket::setDescriptor(int descriptor){
 void CSocket::setAddress(sockaddr_in address){
     socketAddress=address;
 }
+
+/*void CSocket::setType(short rwe){
+    socketDescriptor.events=rwe;
+}*/
+
+/*bool operator== (CSocket& sock1, CSocket& sock2){
+    return (sock1.socketDescriptor==sock2.socketDescriptor);
+}*/
