@@ -24,5 +24,6 @@ private:
     void addClientToPollSet(int clientSocketDescriptor);
     void writeToClient(int socketDescriptor);
     CSocket* findPollFDinList(int pollDescriptor);
-    void processRead(int fd);
+    void processRead(int fd, int index);
+    void deleteSocket(CSocket* clientToDelete, int index);
 };

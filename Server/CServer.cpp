@@ -9,6 +9,7 @@
 #include <arpa/inet.h> //inet_addr, inet_ntoa
 #include <pthread.h>
 #include <sys/poll.h>
+#include <signal.h> //pt a gestionea eroarea cauzata de SIGPIPE cand se deconecteaza un socket
 
 CServer* CServer::instance = NULL;
 
@@ -56,7 +57,6 @@ void* CServer::acceptConnections(){
     struct sockaddr_in clientSocketAddress;
     int clientSocketAddressLength = sizeof(clientSocketAddress);
 
-    int index=0;
     while(true){
     if((clientSocketDescriptor=accept(serverSocket->getSocketDescriptor(), (struct sockaddr *)&clientSocketAddress, (socklen_t *)&clientSocketAddressLength))==-1){//causes the process to block until a client connects to the server, and then wakes up
         perror("accept");
@@ -69,10 +69,6 @@ void* CServer::acceptConnections(){
         client->setAddress(clientSocketAddress);
         addClientToList(client);
         addClientToPollSet(clientSocketDescriptor);
-        index++;
-        if(index==3)
-            break;
-
         /*printf("\nLista: ");
         list<CSocket*>::iterator it;
         char clientIP[20];
@@ -84,7 +80,6 @@ void* CServer::acceptConnections(){
         index++;*/
     }
     }
-    printf("S-au conectat 3\n");
     pthread_exit(NULL);
 }
 
@@ -128,42 +123,49 @@ void CServer::addClientToPollSet(int clientSocketDescriptor){
 void* CServer::readFromClients(){
     //as putea face o clasa parsator care imi va genera writer-ul necesar pt string ul respectiv, sa fie mai multe thread uri cu cate un writer
     list<CSocket*>::iterator it;
-    int index=0;
     while(true){
-        int setSize=clientPollSet.size();
-        poll(&clientPollSet[0], setSize, 5); //If timeout is greater than zero, it specifies a maximum interval (in milliseconds) to wait for any file descriptor to become ready. If timeout is zero, then poll() will return without blocking. If the value of timeout is -1, the poll blocks indefinitely.
+        //int setSize=clientPollSet.size(); -- deoarece am modificat codul ca sa stearga descriptorii socketurilor deconectate, trebuie sa las sa recalculeze size-ul, ca sa nu dea eroare in for, cand am size-ul mai mic si incearca sa citeasca de la o locatie mai mare
+        //!!!bug interesant
+        //!!!cand un socket se deconecteaza, poll crede ca e ceva de citit, citeste ce am trimis ultima oara, si cand se incearca sa se scrie, thread-ul se termina din cauza semnalului SIGPIPE
+        //il voi repara prin sigpipe handling, si sterg socketul si din lista de conexiuni si din setul de polling
+        //l-am reparat verificand return code-ul de la read
+        poll(&clientPollSet[0], clientPollSet.size(), 5); 
+        //If timeout is greater than zero, it specifies a maximum interval (in milliseconds) to wait for any file descriptor to become ready. If timeout is zero, then poll() will return without blocking. If the value of timeout is -1, the poll blocks indefinitely.
         //pisi, seteaza si tu timeout-ul pe 5 ms ca sa nu astepti o eternitate ca atunci cand ai pus 60000, *wink, wink #stupid
         //si nu stiai dc mere greu...
-        for(int i=0; i<setSize;i++){
+        for(int i=0; i<clientPollSet.size();i++){
             if(clientPollSet[i].revents & POLLIN){
-                processRead(clientPollSet[i].fd);
-                index++;
-                if(index==3)
-                    break;
+                processRead(clientPollSet[i].fd, i);
             }
         }
-        if(index==3)
-            break;
     }
     pthread_exit(NULL);
 }
 
-void CServer::processRead(int fd){
+void CServer::processRead(int fd, int index){
     char receivedMsg[250];//aici o sa ii schimb size-ul in functie de cum vom face mesajele
     char clientIP[20];
     int clientPort;
 
     CSocket* clientSocket = findPollFDinList(fd);
     if (!clientSocket) {
+        printf("n-o gasit descriptorul in pollset");
         perror("descriptor not found in pollset");
 		_exit(1);
     }
 
-    read(clientSocket->getSocketDescriptor(), receivedMsg, sizeof(receivedMsg)); //the read will block until there is smth to read in the socket, after the client has executed a write() - it returns the number of charachters read            
     strcpy(clientIP, inet_ntoa(clientSocket->getSocketAddress().sin_addr));
     clientPort=ntohs(clientSocket->getSocketAddress().sin_port);
-    printf("Mesaj: %s\nDe la: %s %d\n", receivedMsg, clientIP, clientPort);
-    writeToClient(clientSocket->getSocketDescriptor());
+
+    int rc = read(clientSocket->getSocketDescriptor(), receivedMsg, sizeof(receivedMsg)); //the read will block until there is smth to read in the socket, after the client has executed a write() - it returns the number of charachters read            
+    if (rc==0){
+        printf("Client %s %d disconnected\n", clientIP, clientPort);
+        deleteSocket(clientSocket, index);
+    }
+    else{
+        printf("Message: %s\nFrom: %s %d\n", receivedMsg, clientIP, clientPort);
+        writeToClient(clientSocket->getSocketDescriptor());
+    }
 }
 
 CSocket* CServer::findPollFDinList(int pollDescriptor){
@@ -173,6 +175,11 @@ CSocket* CServer::findPollFDinList(int pollDescriptor){
              return *it;
     }
     return NULL;
+}
+
+void CServer::deleteSocket(CSocket* clientToDelete, int index){
+    clientSocketList.remove(clientToDelete);
+    clientPollSet.erase(clientPollSet.begin()+index);
 }
 
 void CServer::writeToClient(int socketDescriptor){
