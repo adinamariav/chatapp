@@ -2,28 +2,33 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#define MAX 5
+
 typedef void * (*THREADFUNCPTR)(void *); //cast-ul tipului de pointer pt functia thread-ului
 
 int main(int argc, char** argv){
 
     if(argc<2){
-        printf("Eroare - Introduceti IP server ca argument\n");
+        printf("Error - Enter server IP as an argument\n");
         printf("Ex. ./server 127.0.0.1\n");
         _exit(1);
     }
 
     CServer* server=CServer::getInstance(argv[1], 64000);
 
-    server->listenForConnections(5);
+    server->listenForConnections(MAX);
 
-    pthread_t thread1;
+    pthread_t thread1; 
+    //se blocheaza in accept pana cand apare o conexiune noua pe care o adauga in lista de conexiuni si in poll set
+    //si din cauza ca e in kernel majoritatea timpului, cand celelalte thread-uri dau exit, asta da accept invalid argument
     int rc1=pthread_create(&thread1, NULL, (THREADFUNCPTR) &CServer::acceptConnections, (void*) server);
     if (rc1) {
         printf("ERROR; return code from pthread_create() is %d\n", rc1);
         _exit(1);
     }
 
-    pthread_t thread2;
+    pthread_t thread2; 
+    //while infinit care verifica lista de conexiuni si poll setul si citeste; chiar daca s-au deconectat toti utilizatorii, merge in continuare
     int rc2=pthread_create(&thread2, NULL, (THREADFUNCPTR) &CServer::readFromClients, (void*) server);
     if (rc2) {
         printf("ERROR; return code from pthread_create() is %d\n", rc2);
@@ -33,13 +38,18 @@ int main(int argc, char** argv){
     //pthread_create() has no idea what value of this to use
     //you have to use a static class method (which has no this parameter), or a plain ordinary function to bootstrap the class
 
-    //wait till threads are complete before main continues
-    pthread_join(thread2, NULL);
-    
-    server->stop();
+    pthread_t thread3;
+    //permite administrarea server-ului, in principal inchiderea
+    int rc3=pthread_create(&thread3, NULL, (THREADFUNCPTR) &CServer::readAdminCommands, (void*) server);
+    if (rc3) {
+        printf("ERROR; return code from pthread_create() is %d\n", rc3);
+        _exit(1);
+    }
 
+    pthread_join(thread3, NULL);
+    //wait till threads are complete before main continues
+    
     server->destroyInstance();
 
     pthread_exit(NULL);
-    //_exit(0);
 }

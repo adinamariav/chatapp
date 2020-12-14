@@ -11,6 +11,7 @@ public:
     void listenForConnections(int maxNumOfConnections);
     void* acceptConnections(); //daca nu ar fi fost un thread, atunci nu am fi ajuns la read in main fiindca e un while infinit
     void* readFromClients(); //returneaza void* si primeste ca arg void*, pt thread, o fct membru implicit primeste ca argument *this pointer
+    void* readAdminCommands();
     void stop();
 private:
     static CServer *instance; 
@@ -26,4 +27,6 @@ private:
     CSocket* findPollFDinList(int pollDescriptor);
     void processRead(int fd, int index);
     void deleteSocket(CSocket* clientToDelete, int index);
+    int stopThread1;
+    int stopThread2;
 };

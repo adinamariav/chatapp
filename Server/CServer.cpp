@@ -29,6 +29,8 @@ void CServer::destroyInstance(){
 
 CServer::CServer(string IPaddress, int portNumber){
     serverSocket=new CSocket(IPaddress, portNumber);
+    stopThread1=1;
+    stopThread2=1;
 }
 
 CServer::~CServer(){
@@ -47,7 +49,8 @@ CSocket* CServer::getServerSocket(){
 }
 
 void CServer::listenForConnections(int maxNumOfConnections){
-    listen(serverSocket->getSocketDescriptor(), maxNumOfConnections); //5 is the maximum size permitted by most systems - the number of connections that can be waiting while the process is handling a particular one
+    listen(serverSocket->getSocketDescriptor(), maxNumOfConnections); 
+    //5 is the maximum size permitted by most systems - the number of connections that can be waiting while the process is handling a particular one
     //if the first argument is a valid socket the call cannot fail
 }
 
@@ -57,27 +60,29 @@ void* CServer::acceptConnections(){
     struct sockaddr_in clientSocketAddress;
     int clientSocketAddressLength = sizeof(clientSocketAddress);
 
-    while(true){
+    char clientIP[20];
+    int clientPort;
+
+    while(stopThread1){
     if((clientSocketDescriptor=accept(serverSocket->getSocketDescriptor(), (struct sockaddr *)&clientSocketAddress, (socklen_t *)&clientSocketAddressLength))==-1){//causes the process to block until a client connects to the server, and then wakes up
-        perror("accept");
-		_exit(1);
+        if(!stopThread1){
+            //adica la shutdown nu semnalizeaza nimic
+        }
+        else{
+            perror("Accept error");
+		    _exit(1);
+        }
     }
     else{
-        printf("Client conectat\n");
+        strcpy(clientIP, inet_ntoa(clientSocketAddress.sin_addr));
+        clientPort=ntohs(clientSocketAddress.sin_port);
+        printf("Connected %s %d\n", clientIP, clientPort);
+
         CSocket* client=new CSocket();
         client->setDescriptor(clientSocketDescriptor);
         client->setAddress(clientSocketAddress);
         addClientToList(client);
         addClientToPollSet(clientSocketDescriptor);
-        /*printf("\nLista: ");
-        list<CSocket*>::iterator it;
-        char clientIP[20];
-        for(it=clientSocketList.begin(); it!=clientSocketList.end();++it){
-            strcpy(clientIP, inet_ntoa((*it)->getSocketAddress().sin_addr));
-            printf("%s ", clientIP);
-        }
-        printf("\n");
-        index++;*/
     }
     }
     pthread_exit(NULL);
@@ -93,37 +98,10 @@ void CServer::addClientToPollSet(int clientSocketDescriptor){
     client.events=POLLIN;
     clientPollSet.push_back(client);
 }
-//cred ca thread-ul de read va trebui sa gestioneze si stergerea socket-urilor care nu mai exista
-
-/*void* CServer::readFromClients(){
-    char receivedMsg[250];//aici o sa ii schimb size-ul in functie de cum vom face mesajele
-    char clientIP[20];
-    int clientPort;
-
-    //as putea face o clasa parsator care imi va genera writer-ul necesar pt string ul respectiv, sa fie mai multe thread uri cu cate un writer
-    list<CSocket*>::iterator it;
-    int index=0;
-    while(true){
-        for(it=clientSocketList.begin(); it!=clientSocketList.end();++it){
-            read((*it)->getSocketDescriptor(), receivedMsg, sizeof(receivedMsg)); //the read will block until there is smth to read in the socket, after the client has executed a write() - it returns the number of charachters read
-            strcpy(clientIP, inet_ntoa((*it)->getSocketAddress().sin_addr));
-            clientPort=ntohs((*it)->getSocketAddress().sin_port);
-            printf("Mesaj: %s\nDe la: %s %d\n", receivedMsg, clientIP, clientPort);
-            writeToClient((*it)->getSocketDescriptor());
-            index++;
-            if(index==3)
-                break;
-        }
-        if(index==3)
-            break;
-    }
-    pthread_exit(NULL);
-}*/
 
 void* CServer::readFromClients(){
-    //as putea face o clasa parsator care imi va genera writer-ul necesar pt string ul respectiv, sa fie mai multe thread uri cu cate un writer
     list<CSocket*>::iterator it;
-    while(true){
+    while(stopThread2){
         //int setSize=clientPollSet.size(); -- deoarece am modificat codul ca sa stearga descriptorii socketurilor deconectate, trebuie sa las sa recalculeze size-ul, ca sa nu dea eroare in for, cand am size-ul mai mic si incearca sa citeasca de la o locatie mai mare
         //!!!bug interesant
         //!!!cand un socket se deconecteaza, poll crede ca e ceva de citit, citeste ce am trimis ultima oara, si cand se incearca sa se scrie, thread-ul se termina din cauza semnalului SIGPIPE
@@ -143,28 +121,42 @@ void* CServer::readFromClients(){
 }
 
 void CServer::processRead(int fd, int index){
-    char receivedMsg[250];//aici o sa ii schimb size-ul in functie de cum vom face mesajele
+    char receivedMsg[250]; //aici o sa ii schimb size-ul in functie de cum vom face mesajele
     char clientIP[20];
     int clientPort;
 
     CSocket* clientSocket = findPollFDinList(fd);
     if (!clientSocket) {
-        printf("n-o gasit descriptorul in pollset");
-        perror("descriptor not found in pollset");
+        perror("Descriptor not found in pollset");
 		_exit(1);
     }
 
     strcpy(clientIP, inet_ntoa(clientSocket->getSocketAddress().sin_addr));
     clientPort=ntohs(clientSocket->getSocketAddress().sin_port);
 
-    int rc = read(clientSocket->getSocketDescriptor(), receivedMsg, sizeof(receivedMsg)); //the read will block until there is smth to read in the socket, after the client has executed a write() - it returns the number of charachters read            
+    int rc = read(clientSocket->getSocketDescriptor(), receivedMsg, sizeof(receivedMsg)); 
+    //the read will block until there is smth to read in the socket, after the client has executed a write() - it returns the number of charachters read            
+    
     if (rc==0){
-        printf("Client %s %d disconnected\n", clientIP, clientPort);
+        printf("Disconnected %s %d\n", clientIP, clientPort);
         deleteSocket(clientSocket, index);
     }
     else{
         printf("Message: %s\nFrom: %s %d\n", receivedMsg, clientIP, clientPort);
         writeToClient(clientSocket->getSocketDescriptor());
+    
+        //CParser, parser.getData(int, string), if prima chestie din string e login/signup whatever, adauga-l in map-ul corespunzator de int si string
+        //CParser are processLogin, processSignup, processETC, care sunt thread-uri create in constructorul CParser
+        //ele vor avea atributii specifice: trimit catre baza de date, dau reply, sau altele
+   
+        //e bine sa dea reply mereu, e ca si cum vad ala de pe whatsupp ca s-a trimis vv
+        //writer-ii/processor-ii nu cred ca ar trebui sa fie obiecte avand in vedere ca singura functionalitate e sa scrie, vor fi thread-uri, sa poata fi scrise 
+        
+        //avand in vedere ca aici dau descriptorii ca parametrii si voi lucra cu ei, e posibil ca un client sa se deconecteze inainte sa ii trimit mesajul
+        //wut do i do? ma gandeam sa pun actiunea de deconectare if nu stiu ce variabila, sleep(2)
+        //ma rog, acum ma gandesc ca daca se deconecteaza, inseamna ca de bunavoie si nesilit de nimeni a acceptat sa nu mai primeasca rasp
+        //cu toate astea, daca e offline ar trebui sa ii stochez mesajele undeva si sa i le trimit atunci cand e back online
+        //e o poveste pentru alta data...
     }
 }
 
@@ -180,24 +172,47 @@ CSocket* CServer::findPollFDinList(int pollDescriptor){
 void CServer::deleteSocket(CSocket* clientToDelete, int index){
     clientSocketList.remove(clientToDelete);
     clientPollSet.erase(clientPollSet.begin()+index);
+    shutdown(clientToDelete->getSocketDescriptor(), 2);
+    close(clientToDelete->getSocketDescriptor());
 }
 
 void CServer::writeToClient(int socketDescriptor){
     char buffer[30];
     sprintf(buffer, "Message to send back");
     write(socketDescriptor, buffer, sizeof(buffer));
-    //printf("Press any key to continue...");
-    //fflush(stdout);
-	//getchar();
 }
 
-void CServer::stop(){
+void* CServer::readAdminCommands(){
+    while(true){
+        char command[10];
+        scanf("%s", command);
+        if(strcmp(command,"exit")==0){ //killareste celelalte thread-uri, mwahahahaha
+            stopThread2=0;
+            stopThread1=0; 
+            //degeaba fac stopThread1=0, fiindca atunci se afla in kernel, si thread-ul e blocat, nu se misca while-ul
+            //cum opresc thread-ul ala? aparent nu prea am cum daca e in kernel space
+            //sau... trimit un mesaje de la server catre server, se activeaza accept-ul si schimba variabila si kbooooom --nu merge
+            //lol, si scria in eroare, accept: Invalid argument Cannot find user-level thread for LWP 6288: generic error  
+            stop();
+            break;
+        }
+    }
+    pthread_exit(NULL);
+}
+
+void CServer::stop(){ //poate avea loc atunci cand clientii sunt conectati, si prin urmare trebuie sa inchidem conexiunile
     list<CSocket*>::iterator it;
     for(it=clientSocketList.begin(); it!=clientSocketList.end();++it){
         int descriptor=(*it)->getSocketDescriptor();
         shutdown(descriptor, 2);
         close(descriptor);
+        (*it)=NULL;
     }
+    clientSocketList.clear();
+    clientPollSet.clear();
     shutdown(serverSocket->getSocketDescriptor(), 2);
-    close(serverSocket->getSocketDescriptor());
+    close(serverSocket->getSocketDescriptor()); //va scoate thread-ul cu accept din kernel, dand eroare, iar la verificare stopthread, thread exit, khaching
+    //Closing the listening socket is a right way to go. Then accept() returns -1 and sets errno to EBADF, as you already observed. 
+    //You just need some more logic in the "threading stuff" to analyze what have actually happened. 
+    //For example, test not_ended: if it is false, you know for sure that the error is intended, and that the shutdown is in progress; otherwise bla bla bla
 }
