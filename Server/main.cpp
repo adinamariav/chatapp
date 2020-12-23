@@ -1,6 +1,7 @@
 #include "CServer.hpp"
 #include <unistd.h>
 #include <pthread.h>
+#include <mysql/mysql.h>
 
 #define MAX 5
 

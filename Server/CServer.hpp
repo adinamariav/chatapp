@@ -2,6 +2,7 @@
 #include <list>
 #include <string>
 #include <vector>
+#include <mysql/mysql.h>
 using namespace std;
 
 class CServer {
@@ -23,10 +24,11 @@ private:
     CSocket* getServerSocket();
     void addClientToList(CSocket* clientSocket);
     void addClientToPollSet(int clientSocketDescriptor);
-    void writeToClient(int socketDescriptor);
+    void writeToClient(int socketDescriptor, string message);
     CSocket* findPollFDinList(int pollDescriptor);
     void processRead(int fd, int index);
     void deleteSocket(CSocket* clientToDelete, int index);
     int stopThread1;
     int stopThread2;
+    MYSQL* con;
 };

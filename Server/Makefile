@@ -4,8 +4,8 @@
 
 # Compiler settings - Can be customized.
 CC = g++
-CXXFLAGS = -std=c++11 -Wall -pthread -g
-LDFLAGS = 
+CXXFLAGS = -std=c++11 -Wall -pthread -g 
+LDFLAGS = -lmysqlclient -L/usr/lib/mysql
 
 # Makefile settings - Can be customized.
 APPNAME = server
