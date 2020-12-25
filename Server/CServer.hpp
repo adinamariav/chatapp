@@ -1,4 +1,5 @@
 #include "CSocket.hpp"
+#include "CDatabaseManager.hpp"
 #include <list>
 #include <string>
 #include <vector>
@@ -26,9 +27,10 @@ private:
     void addClientToPollSet(int clientSocketDescriptor);
     void writeToClient(int socketDescriptor, string message);
     CSocket* findPollFDinList(int pollDescriptor);
-    void processRead(int fd, int index);
+    void startReading(int fd, int index);
     void deleteSocket(CSocket* clientToDelete, int index);
     int stopThread1;
     int stopThread2;
-    MYSQL* con;
+    CDatabaseManager* databaseManager;
+    void processMessage(CSocket* clientSocket, char* receivedMsg);
 };

@@ -11,13 +11,6 @@
 #include <sys/poll.h>
 #include <signal.h> //pt a gestionea eroarea cauzata de SIGPIPE cand se deconecteaza un socket
 
-void finish_with_error(MYSQL *con)
-{
-  fprintf(stderr, "%s\n", mysql_error(con));
-  //mysql_close(con);
-  //exit(1);
-}
-
 CServer* CServer::instance = NULL;
 
 CServer* CServer::getInstance(string IPaddress, int portNumber){
@@ -36,47 +29,15 @@ void CServer::destroyInstance(){
 
 CServer::CServer(string IPaddress, int portNumber){
     serverSocket=new CSocket(IPaddress, portNumber);
+    databaseManager=new CDatabaseManager("phpmyadmin", "argint99","ChatServer");
     stopThread1=1;
     stopThread2=1;
-
-    con = mysql_init(NULL);
-
-    if (con == NULL){
-      fprintf(stderr, "%s\n", mysql_error(con));
-      exit(1);
-    }
-    
-    if (mysql_real_connect(con, "localhost", "phpmyadmin", "argint99","ChatServer", 0, NULL, 0) == NULL){
-      finish_with_error(con);
-    }
-
-    if (mysql_query(con, "SELECT * FROM Users")){
-      finish_with_error(con);
-    }
-
-    MYSQL_RES *result = mysql_store_result(con);
-
-    if (result == NULL){
-      finish_with_error(con);
-    }
-
-    int num_fields = mysql_num_fields(result);
-
-    MYSQL_ROW row;
-
-    while ((row = mysql_fetch_row(result))){
-      for(int i = 0; i < num_fields; i++){
-          printf("%s ", row[i] ? row[i] : "NULL");
-      }
-      printf("\n");
-    }
-
-    mysql_free_result(result);
 }
 
 CServer::~CServer(){
     delete serverSocket;
     serverSocket=NULL;
+
     list<CSocket*>::iterator it;
     for(it=clientSocketList.begin(); it!=clientSocketList.end();++it){
         delete *it;
@@ -84,7 +45,10 @@ CServer::~CServer(){
     }
     clientSocketList.clear();
 
-    mysql_close(con);
+    databaseManager->closeConnectionToServer();
+    delete databaseManager;
+    databaseManager=NULL;
+
 }
 
 CSocket* CServer::getServerSocket(){
@@ -156,14 +120,14 @@ void* CServer::readFromClients(){
         //si nu stiai dc mere greu...
         for(int i=0; i<clientPollSet.size();i++){
             if(clientPollSet[i].revents & POLLIN){
-                processRead(clientPollSet[i].fd, i);
+                startReading(clientPollSet[i].fd, i);
             }
         }
     }
     pthread_exit(NULL);
 }
 
-void CServer::processRead(int fd, int index){
+void CServer::startReading(int fd, int index){
     char receivedMsg[250]; //aici o sa ii schimb size-ul in functie de cum vom face mesajele
     char clientIP[20];
     int clientPort;
@@ -185,9 +149,13 @@ void CServer::processRead(int fd, int index){
         deleteSocket(clientSocket, index);
     }
     else{
-        receivedMsg[rc+1]='/0';
+        receivedMsg[rc+1]='\0';
         printf("Message: %s\nFrom: %s %d\n", receivedMsg, clientIP, clientPort);
+        processMessage(clientSocket, receivedMsg);
+    }
+}
 
+void CServer::processMessage(CSocket* clientSocket, char* receivedMsg){
     char* p=NULL;
     p = strtok (receivedMsg,"`");
     printf ("%s\n",p);
@@ -213,32 +181,25 @@ void CServer::processRead(int fd, int index){
             index++;
         }
         //verifica daca mai exista username-ul
-        command="SELECT Username FROM Users WHERE Username='";
-        command+=username;
-        command+="'";
+        command=databaseManager->stringifySignupSelect(username);
         printf("%s\n", command.c_str());
-        if (mysql_query(con, command.c_str())){
+        if(!databaseManager->getCommandExitStatus(command)){
             writeToClient(clientSocket->getSocketDescriptor(), "signup`no");
-            finish_with_error(con);
-        }
-        MYSQL_RES *result = mysql_store_result(con);
-        if(mysql_num_rows(result)!=0){
-            writeToClient(clientSocket->getSocketDescriptor(), "signup`no");
-        }
-        //
-        command="INSERT INTO Users VALUES(NULL,'";
-        printf("%s\n", command.c_str());
-        command+=username;
-        command+="','";
-        command+=password;
-        command+="')";
-        if (mysql_query(con, command.c_str())) {
-           writeToClient(clientSocket->getSocketDescriptor(), "signup`no");
-           finish_with_error(con);
         }
         else{
-            writeToClient(clientSocket->getSocketDescriptor(), "signup`yes");
-        }  
+            if(databaseManager->getNumberOfSelectedEntries())
+                writeToClient(clientSocket->getSocketDescriptor(), "signup`no");
+            else {
+                command=databaseManager->stringifySignupInsert(username, password);
+                if(!databaseManager->getCommandExitStatus(command))
+                    writeToClient(clientSocket->getSocketDescriptor(), "signup`no");
+                else{
+                    writeToClient(clientSocket->getSocketDescriptor(), "signup`yes");
+                }
+                
+            }
+
+        } 
     }
     else if(strcmp(p, "login")==0){
         int index=0;
@@ -258,21 +219,20 @@ void CServer::processRead(int fd, int index){
             index++;
         }
         //verifica daca mai exista username-ul
-        command="SELECT Username, Password FROM Users WHERE Username='";
-        command+=username;
-        command+="' AND Password='";
-        command+=password;
-        command+="'";
-        if (mysql_query(con, command.c_str())){
+        command=databaseManager->stringifyLoginSelect(username, password);
+        if(!databaseManager->getCommandExitStatus(command)){
             writeToClient(clientSocket->getSocketDescriptor(), "login`no");
-            finish_with_error(con);
         }
-        MYSQL_RES *result = mysql_store_result(con);
-        if(mysql_num_rows(result)!=0){
-            writeToClient(clientSocket->getSocketDescriptor(), "login`yes");
-        }
+        else{
+            if(databaseManager->getNumberOfSelectedEntries())
+                writeToClient(clientSocket->getSocketDescriptor(), "login`yes");
+            else {
+                writeToClient(clientSocket->getSocketDescriptor(), "login`no");
+            }    
+
+        } 
     }    
-    /*else if(strcmp(p, "changeu")==0){
+    else if(strcmp(p, "changeu")==0){
         int index=0;
         char oldusername[50];
         char newusername[50];
@@ -293,14 +253,9 @@ void CServer::processRead(int fd, int index){
             }
             index++;
         }
-        command="UPDATE Users SET Username='";
-        command+=newusername;
-        command+="' WHERE Username='";
-        command+=oldusername;
-        command+="'";
-        if (mysql_query(con, command.c_str())){
+        command=databaseManager->stringifyChangeUsernameUpdate(newusername, oldusername);
+        if(!databaseManager->getCommandExitStatus(command)){
             writeToClient(clientSocket->getSocketDescriptor(), "changeu`no");
-            finish_with_error(con);
         }
         else{
             writeToClient(clientSocket->getSocketDescriptor(), "changeu`yes");
@@ -327,19 +282,22 @@ void CServer::processRead(int fd, int index){
             }
             index++;
         }
-        command="UPDATE Users SET Password='";
-        command+=newpassword;
-        command+="' WHERE Password='";
-        command+=oldpassword;
-        command+="'";
-        if (mysql_query(con, command.c_str())){
+        command=databaseManager->stringifyChangePasswordUpdate(newpassword, username, oldpassword);
+        if(!databaseManager->getCommandExitStatus(command)){
             writeToClient(clientSocket->getSocketDescriptor(), "changep`no");
-            finish_with_error(con);
         }
         else{
             writeToClient(clientSocket->getSocketDescriptor(), "changep`yes");
         }
-    }   */ 
+    }   
+    else if(strcmp(p, "logout")==0){
+        char username[50];
+        printf ("%s\n",p);
+        p = strtok (NULL, "`");
+        printf ("%s\n",p);
+        strcpy(username, p);
+        writeToClient(clientSocket->getSocketDescriptor(), "logout`yes");
+    }
         //CParser, parser.getData(int, string), if prima chestie din string e login/signup whatever, adauga-l in map-ul corespunzator de int si string
         //CParser are processLogin, processSignup, processETC, care sunt thread-uri create in constructorul CParser
         //ele vor avea atributii specifice: trimit catre baza de date, dau reply, sau altele
@@ -352,7 +310,6 @@ void CServer::processRead(int fd, int index){
         //ma rog, acum ma gandesc ca daca se deconecteaza, inseamna ca de bunavoie si nesilit de nimeni a acceptat sa nu mai primeasca rasp
         //cu toate astea, daca e offline ar trebui sa ii stochez mesajele undeva si sa i le trimit atunci cand e back online
         //e o poveste pentru alta data...
-    }
 }
 
 CSocket* CServer::findPollFDinList(int pollDescriptor){
