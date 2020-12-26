@@ -57,6 +57,8 @@ void* CConnectionManager::acceptConnections(){
     if((clientSocketDescriptor=accept(serverSocket->getSocketDescriptor(), (struct sockaddr *)&clientSocketAddress, (socklen_t *)&clientSocketAddressLength))==-1){//causes the process to block until a client connects to the server, and then wakes up
         if(!stopThread1){
             //adica la shutdown nu semnalizeaza nimic
+            //aici se presupune ca stopThread1 se schimba pana la if, e 1 la inceput si pana la if ajunge 0
+            //la urmatoare iteratie se iese din while
         }
         else{
             perror("Accept error");

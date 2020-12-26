@@ -48,9 +48,8 @@ CServer::~CServer(){
     parser=NULL;
 }
 
-void CServer::getReadyForConnectingToClients(){
-    connectionManager->listenForConnections(MAX);
-    
+void CServer::initConnectionSetup(){
+    connectionManager->listenForConnections(MAX);  
     pthread_t thread1; 
     //se blocheaza in accept pana cand apare o conexiune noua pe care o adauga in lista de conexiuni si in poll set
     //si din cauza ca e in kernel majoritatea timpului, cand celelalte thread-uri dau exit, asta da accept invalid argument
@@ -59,6 +58,31 @@ void CServer::getReadyForConnectingToClients(){
         printf("ERROR; return code from pthread_create() is %d\n", rc1);
         _exit(1);
     }
+}
+
+void CServer::readClientData(){
+    pthread_t thread2; 
+    //while infinit care verifica lista de conexiuni si poll setul si citeste; chiar daca s-au deconectat toti utilizatorii, merge in continuare
+    int rc2=pthread_create(&thread2, NULL, (THREADFUNCPTR) &CServer::readFromClients, (void*) this);
+    if (rc2) {
+        printf("ERROR; return code from pthread_create() is %d\n", rc2);
+        _exit(1);
+    }
+    //C++ class member functions have a hidden this parameter passed in
+    //pthread_create() has no idea what value of this to use
+    //you have to use a static class method (which has no this parameter), or a plain ordinary function to bootstrap the class
+}
+
+void CServer::readAdminCommands(){
+    pthread_t thread3;
+    //permite administrarea server-ului, in principal inchiderea
+    int rc3=pthread_create(&thread3, NULL, (THREADFUNCPTR) &CServer::manageServer, (void*) this);
+    if (rc3) {
+        printf("ERROR; return code from pthread_create() is %d\n", rc3);
+        _exit(1);
+    }
+    pthread_join(thread3, NULL);
+    //wait till threads are complete before main continues
 }
 
 void* CServer::readFromClients(){
@@ -165,7 +189,7 @@ void CServer::writeToClient(int socketDescriptor, string message){
     write(socketDescriptor, buffer, sizeof(buffer));
 }
 
-void* CServer::readAdminCommands(){
+void* CServer::manageServer(){
     while(true){
         char command[10];
         scanf("%s", command);

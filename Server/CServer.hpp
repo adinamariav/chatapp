@@ -11,9 +11,11 @@ class CServer {
 public:
     static CServer* getInstance(string IPaddress, int portNumber);
     static void destroyInstance();
-    void getReadyForConnectingToClients();
+    void initConnectionSetup();
+    void readClientData();
     void* readFromClients(); //returneaza void* si primeste ca arg void*, pt thread, o fct membru implicit primeste ca argument *this pointer
-    void* readAdminCommands();
+    void readAdminCommands();
+    void* manageServer();
 private:
     static CServer *instance; 
     CServer(string IPaddress, int portNumber);
