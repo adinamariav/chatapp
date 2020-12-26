@@ -3,8 +3,6 @@
 #include <pthread.h>
 #include <mysql/mysql.h>
 
-#define MAX 5
-
 typedef void * (*THREADFUNCPTR)(void *); //cast-ul tipului de pointer pt functia thread-ului
 
 int main(int argc, char** argv){
@@ -17,16 +15,7 @@ int main(int argc, char** argv){
 
     CServer* server=CServer::getInstance(argv[1], 64000);
 
-    server->listenForConnections(MAX);
-
-    pthread_t thread1; 
-    //se blocheaza in accept pana cand apare o conexiune noua pe care o adauga in lista de conexiuni si in poll set
-    //si din cauza ca e in kernel majoritatea timpului, cand celelalte thread-uri dau exit, asta da accept invalid argument
-    int rc1=pthread_create(&thread1, NULL, (THREADFUNCPTR) &CServer::acceptConnections, (void*) server);
-    if (rc1) {
-        printf("ERROR; return code from pthread_create() is %d\n", rc1);
-        _exit(1);
-    }
+    server->getReadyForConnectingToClients();
 
     pthread_t thread2; 
     //while infinit care verifica lista de conexiuni si poll setul si citeste; chiar daca s-au deconectat toti utilizatorii, merge in continuare

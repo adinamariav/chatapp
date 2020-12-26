@@ -11,7 +11,6 @@ public:
     string getLoginResponse(string& username, string& password);
     string getChangeUsernameResponse(string& newusername, string& oldusername);
     string getChangePasswordResponse (string& newpassword, string& username, string& oldpassword);
-    void closeConnectionToServer();
 private:
     MYSQL* con;
     void printError(MYSQL* con);
@@ -22,4 +21,5 @@ private:
     string stringifyLoginSelect(string username, string password);
     string stringifyChangeUsernameUpdate(string newusername, string oldusername);
     string stringifyChangePasswordUpdate(string newpassword, string username, string oldpassword);
+    void closeConnectionToServer();
 };

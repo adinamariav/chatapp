@@ -5,7 +5,7 @@ CDatabaseManager::CDatabaseManager(){
 }
 
 CDatabaseManager::~CDatabaseManager(){
-
+    closeConnectionToServer();
 }
 
 CDatabaseManager::CDatabaseManager(string sqlServerUsername, string sqlServerPassword, string sqlServerDatabase){
