@@ -1,5 +1,6 @@
 #include "CSocket.hpp"
 #include "CDatabaseManager.hpp"
+#include "CParser.hpp"
 #include <list>
 #include <string>
 #include <vector>
@@ -33,4 +34,5 @@ private:
     int stopThread2;
     CDatabaseManager* databaseManager;
     void processMessage(CSocket* clientSocket, char* receivedMsg);
+    CParser* parser;
 };

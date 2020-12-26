@@ -30,6 +30,7 @@ void CServer::destroyInstance(){
 CServer::CServer(string IPaddress, int portNumber){
     serverSocket=new CSocket(IPaddress, portNumber);
     databaseManager=new CDatabaseManager("phpmyadmin", "argint99","ChatServer");
+    parser=new CParser();
     stopThread1=1;
     stopThread2=1;
 }
@@ -49,6 +50,8 @@ CServer::~CServer(){
     delete databaseManager;
     databaseManager=NULL;
 
+    delete parser;
+    parser=NULL;
 }
 
 CSocket* CServer::getServerSocket(){
@@ -155,156 +158,47 @@ void CServer::startReading(int fd, int index){
     }
 }
 
-void CServer::processMessage(CSocket* clientSocket, char* receivedMsg){
-    char* p=NULL;
-    p = strtok (receivedMsg,"`");
-    printf ("%s\n",p);
+void CServer::processMessage(CSocket* clientSocket, char* receivedMsg){  
     string command;
 
-    if(strcmp(p, "signup")==0){
-        int index=0;
-        char username[50];
-        char password[50];
-        while (p != NULL){
-            p = strtok (NULL, "`");
-            if(index==0){
-                printf ("%s\n", p);
-                strcpy(username, p);
-                printf ("%s\n", username);
-            }
-            else if(index==1){
-                printf("%s\n", p);
-                strcpy(password, p);
-                printf("%s\n", password);
-                break;
-            }
-            index++;
-        }
-        //verifica daca mai exista username-ul
-        command=databaseManager->stringifySignupSelect(username);
-        printf("%s\n", command.c_str());
-        if(!databaseManager->getCommandExitStatus(command)){
-            writeToClient(clientSocket->getSocketDescriptor(), "signup`no");
-        }
-        else{
-            if(databaseManager->getNumberOfSelectedEntries())
-                writeToClient(clientSocket->getSocketDescriptor(), "signup`no");
-            else {
-                command=databaseManager->stringifySignupInsert(username, password);
-                if(!databaseManager->getCommandExitStatus(command))
-                    writeToClient(clientSocket->getSocketDescriptor(), "signup`no");
-                else{
-                    writeToClient(clientSocket->getSocketDescriptor(), "signup`yes");
-                }
-                
-            }
+    string operationType;
+    parser->getOperationType(receivedMsg, operationType);
 
-        } 
+    if(operationType=="signup"){
+        string username;
+        string password;
+        parser->splitMessage(username, password);
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getSignupResponse(username, password).c_str());
+        
     }
-    else if(strcmp(p, "login")==0){
-        int index=0;
-        char username[50];
-        char password[50];
-        printf ("%s\n",p);
-        while (p != NULL){  
-            p = strtok (NULL, "`");
-            printf ("%s\n",p);
-            if(index==0){
-                strcpy(username, p);
-            }
-            else if(index==1){
-                strcpy(password, p);
-                break;
-            }
-            index++;
-        }
-        //verifica daca mai exista username-ul
-        command=databaseManager->stringifyLoginSelect(username, password);
-        if(!databaseManager->getCommandExitStatus(command)){
-            writeToClient(clientSocket->getSocketDescriptor(), "login`no");
-        }
-        else{
-            if(databaseManager->getNumberOfSelectedEntries())
-                writeToClient(clientSocket->getSocketDescriptor(), "login`yes");
-            else {
-                writeToClient(clientSocket->getSocketDescriptor(), "login`no");
-            }    
-
-        } 
+    else if(operationType=="login"){
+        string username;
+        string password;
+        parser->splitMessage(username, password);
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getLoginResponse(username, password).c_str());
     }    
-    else if(strcmp(p, "changeu")==0){
-        int index=0;
-        char oldusername[50];
-        char newusername[50];
-        char password[50];
-        printf ("%s\n",p);
-        while (p != NULL){  
-            p = strtok (NULL, "`");
-            printf ("%s\n",p);
-            if(index==0){
-                strcpy(oldusername, p);
-            }
-            else if(index==1){
-                strcpy(newusername, p);
-            }
-            else if(index==2){
-                strcpy(password, p);
-                break;
-            }
-            index++;
-        }
-        command=databaseManager->stringifyChangeUsernameUpdate(newusername, oldusername);
-        if(!databaseManager->getCommandExitStatus(command)){
-            writeToClient(clientSocket->getSocketDescriptor(), "changeu`no");
-        }
-        else{
-            writeToClient(clientSocket->getSocketDescriptor(), "changeu`yes");
-        }
+    else if(operationType=="changeu"){
+        string oldusername;
+        string newusername;
+        string password;
+        parser->splitMessage(oldusername, newusername, password);
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getChangeUsernameResponse(newusername, oldusername).c_str());
     }    
-    else if(strcmp(p, "changep")==0){
-        int index=0;
-        char username[50];
-        char oldpassword[50];
-        char newpassword[50];
-        printf ("%s\n",p);
-        while (p != NULL){  
-            p = strtok (NULL, "`");
-            printf ("%s\n",p);
-            if(index==0){
-                strcpy(username, p);
-            }
-            else if(index==1){
-                strcpy(oldpassword, p);
-            }
-            else if(index==2){
-                strcpy(newpassword, p);
-                break;
-            }
-            index++;
-        }
-        command=databaseManager->stringifyChangePasswordUpdate(newpassword, username, oldpassword);
-        if(!databaseManager->getCommandExitStatus(command)){
-            writeToClient(clientSocket->getSocketDescriptor(), "changep`no");
-        }
-        else{
-            writeToClient(clientSocket->getSocketDescriptor(), "changep`yes");
-        }
+    else if(operationType=="changep"){
+        string username;
+        string oldpassword;
+        string newpassword;
+        parser->splitMessage(username, oldpassword, newpassword);
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getChangePasswordResponse(newpassword, username, oldpassword).c_str());
     }   
-    else if(strcmp(p, "logout")==0){
-        char username[50];
-        printf ("%s\n",p);
-        p = strtok (NULL, "`");
-        printf ("%s\n",p);
-        strcpy(username, p);
+    else if(operationType=="logout"){
+        //string username;
+        //parser->getToken(username);
         writeToClient(clientSocket->getSocketDescriptor(), "logout`yes");
     }
-        //CParser, parser.getData(int, string), if prima chestie din string e login/signup whatever, adauga-l in map-ul corespunzator de int si string
-        //CParser are processLogin, processSignup, processETC, care sunt thread-uri create in constructorul CParser
-        //ele vor avea atributii specifice: trimit catre baza de date, dau reply, sau altele
-   
-        //e bine sa dea reply mereu, e ca si cum vad ala de pe whatsupp ca s-a trimis vv
-        //writer-ii/processor-ii nu cred ca ar trebui sa fie obiecte avand in vedere ca singura functionalitate e sa scrie, vor fi thread-uri, sa poata fi scrise 
-        
+    else
+        writeToClient(clientSocket->getSocketDescriptor(), "am primit un mesaj ciudat");
+    
         //avand in vedere ca aici dau descriptorii ca parametrii si voi lucra cu ei, e posibil ca un client sa se deconecteze inainte sa ii trimit mesajul
         //wut do i do? ma gandeam sa pun actiunea de deconectare if nu stiu ce variabila, sleep(2)
         //ma rog, acum ma gandesc ca daca se deconecteaza, inseamna ca de bunavoie si nesilit de nimeni a acceptat sa nu mai primeasca rasp

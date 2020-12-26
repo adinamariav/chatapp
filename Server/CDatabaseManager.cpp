@@ -112,3 +112,60 @@ string CDatabaseManager::stringifyChangePasswordUpdate(string newpassword, strin
     command+="'";
     return command;
 }
+
+string CDatabaseManager::getSignupResponse(string& username, string& password){
+    //verifica daca mai exista username-ul
+    //getSignUpResponse, returneaza un string
+    string command=stringifySignupSelect(username);
+    printf("%s\n", command.c_str());
+    if(!getCommandExitStatus(command)){
+        return "signup`no";
+    }
+    else{
+        if(getNumberOfSelectedEntries())
+            return "signup`no"; 
+        else {
+            command=stringifySignupInsert(username, password);
+            if(!getCommandExitStatus(command))
+                return "signup`no";
+            else{
+                return "signup`yes";
+            }           
+        }
+    } 
+}
+
+string CDatabaseManager::getLoginResponse(string& username, string& password){
+    //verifica daca mai exista username-ul
+    string command=stringifyLoginSelect(username, password);
+    if(!getCommandExitStatus(command)){
+        return "login`no";
+    }
+    else{
+        if(getNumberOfSelectedEntries())
+            return "login`yes";
+        else {
+            return "login`no";
+        }    
+    } 
+}
+
+string CDatabaseManager::getChangeUsernameResponse(string& newusername, string& oldusername){
+    string command=stringifyChangeUsernameUpdate(newusername, oldusername);
+    if(!getCommandExitStatus(command)){
+        return "changeu`no";
+    }
+    else{
+        return "changeu`yes";
+    }
+}
+
+string CDatabaseManager::getChangePasswordResponse (string& newpassword, string& username, string& oldpassword){
+    string command=stringifyChangePasswordUpdate(newpassword, username, oldpassword);
+    if(!getCommandExitStatus(command)){
+        return "changep`no";
+    }
+    else{
+        return "changep`yes";
+    }
+}
