@@ -1,11 +1,23 @@
 #ifndef PROGRAMHANDLER_H
 #define PROGRAMHANDLER_H
 
+#include "communicator.h"
+#include "mainwindow.h"
+#include "clientconnector.h"
+#include "chatwindowgenerator.h"
+#include "clientinterface.h"
+#include <QApplication>
+#include <QFile>
+#include <QString>
 
-class ProgramHandler
+class ProgramHandler : public Communicator
 {
 public:
     ProgramHandler();
+    void startProgram(int argc, char *argv[]);
+
+private:
+    int CSocket;
 };
 
 #endif // PROGRAMHANDLER_H

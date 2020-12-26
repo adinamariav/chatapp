@@ -1,24 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <author/>
- <comment/>
- <exportmacro/>
  <class>ChatWindow</class>
- <widget name="ChatWindow" class="QMainWindow">
+ <widget class="QMainWindow" name="ChatWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>484</width>
+    <height>412</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>morseChat</string>
   </property>
-  <widget name="menubar" class="QMenuBar"/>
-  <widget name="centralwidget" class="QWidget"/>
-  <widget name="statusbar" class="QStatusBar"/>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="1" column="0" colspan="2">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>Cele mai recente conversatii:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QLineEdit" name="lineEdit"/>
+    </item>
+    <item row="2" column="0" colspan="2">
+     <widget class="QListWidget" name="listWidget"/>
+    </item>
+    <item row="0" column="0">
+     <widget class="QPushButton" name="searchButton">
+      <property name="text">
+       <string>Cauta utilizator</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>484</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuLogout">
+    <property name="title">
+     <string>User</string>
+    </property>
+    <addaction name="actionLogout"/>
+    <addaction name="actionModificare_User"/>
+    <addaction name="actionModificare_parola"/>
+   </widget>
+   <widget class="QMenu" name="menuConversation">
+    <property name="title">
+     <string>Conversatie</string>
+    </property>
+    <addaction name="actionExpand"/>
+    <addaction name="actionDelete"/>
+    <addaction name="actionCreate_new"/>
+   </widget>
+   <addaction name="menuLogout"/>
+   <addaction name="menuConversation"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionLogout">
+   <property name="text">
+    <string>Delogare</string>
+   </property>
+  </action>
+  <action name="actionModificare_User">
+   <property name="text">
+    <string>Modificare username</string>
+   </property>
+  </action>
+  <action name="actionExpand">
+   <property name="text">
+    <string>Deschidere</string>
+   </property>
+  </action>
+  <action name="actionDelete">
+   <property name="text">
+    <string>Stergere</string>
+   </property>
+  </action>
+  <action name="actionCreate_new">
+   <property name="text">
+    <string>Adaugare conv.</string>
+   </property>
+  </action>
+  <action name="actionModificare_parola">
+   <property name="text">
+    <string>Modificare parola</string>
+   </property>
+  </action>
  </widget>
- <pixmapfunction/>
+ <resources/>
  <connections/>
 </ui>

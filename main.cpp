@@ -1,11 +1,10 @@
-#include "mainwindow.h"
-
-#include <QApplication>
+#include "programhandler.h"
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
-    return a.exec();
+    ProgramHandler handler;
+
+    handler.startProgram(argc, argv);
+
+    return 0;
 }

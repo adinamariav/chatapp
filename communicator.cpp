@@ -2,5 +2,5 @@
 
 Communicator::Communicator()
 {
-
+    this->interface = new ClientConnector();
 }

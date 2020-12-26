@@ -2,21 +2,33 @@
 #define MODIFYPASSWINDOW_H
 
 #include <QDialog>
+#include <QPushButton>
+#include <QMessageBox>
+
+#include "communicator.h"
+#include "messagegenerator.h"
 
 namespace Ui {
 class ModifyPassWindow;
 }
 
-class ModifyPassWindow : public QDialog
+class ModifyPassWindow : public QDialog, public Communicator
 {
     Q_OBJECT
 
 public:
-    explicit ModifyPassWindow(QWidget *parent = nullptr);
+    explicit ModifyPassWindow(std::string username, int socket, QWidget *parent = nullptr);
     ~ModifyPassWindow();
+
+public slots:
+    void okAction();
+    void cancelAction();
 
 private:
     Ui::ModifyPassWindow *ui;
+    std::string username;
+
+    void setupConnections();
 };
 
 #endif // MODIFYPASSWINDOW_H
