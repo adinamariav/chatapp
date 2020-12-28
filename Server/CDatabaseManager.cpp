@@ -90,7 +90,7 @@ string CDatabaseManager::stringifySignupInsert(string username, string password)
     command+=username;
     command+="','";
     command+=password;
-    command+="')";
+    command+="',0)";
     printf("%s\n", command.c_str());
     return command;
 }
@@ -118,23 +118,30 @@ string CDatabaseManager::stringifyChangePasswordUpdate(string newpassword, strin
 }
 
 string CDatabaseManager::stringifyInitMainWindowSelect(string username){
-    string command="SELECT FromUsername, Message, MAX(Date) AS LastDate FROM Messages WHERE ToUsername='";
+    /*string command="SELECT FromUsername, Message, MAX(Date) AS LastDate FROM Messages WHERE ToUsername='";
     command+=username;
-    command+="' GROUP BY FromUsername ORDER BY LastDate DESC";
+    command+="' GROUP BY FromUsername ORDER BY LastDate DESC";*/
+    /*string command="SELECT M.FromUsername, M.Message FROM Messages AS M WHERE M.Date IN (SELECT TOP 1 Mes.Date FROM Messages AS Mes WHERE Mes.FromUsername=M.FromUsername) AND M.ToUsername='";
+    command+=username;
+    command+="'";*/
+    string command="SELECT M.FromUsername, M.Message, M.Date FROM Messages AS M INNER JOIN (SELECT FromUsername, MAX(Date) AS MaxDate FROM Messages GROUP BY FromUsername)Mes ON M.FromUsername=Mes.FromUsername AND M.Date=Mes.MaxDate WHERE M.ToUsername='";
+    command+=username;
+    command+="'";
     printf("%s\n", command.c_str());
     return command;
 }
 
 string CDatabaseManager::stringifyInitMessageWindowSelect(string userRequesting, string userRequested){
-    string command="SELECT FromUsername, Message FROM Messages WHERE (FromUsername='";
+    string command="SELECT FromUsername, Message FROM Messages WHERE FromUsername='";
     command+=userRequested;
     command+="' AND ToUsername='";
     command+=userRequesting;
-    command+="') OR (FromUsername='";
+    command+="' OR FromUsername='";
     command+=userRequesting;
-    command+="' AND toUsername='";
+    command+="' AND ToUsername='";
     command+=userRequested;
-    command="') ORDER BY Date ASC";
+    command+="' ORDER BY Date";
+    printf("%s\n", command.c_str()); 
     return command;
 }
 
@@ -142,6 +149,19 @@ string CDatabaseManager::stringifySearchRequestSelect(string username){
     string command="SELECT Username FROM Users WHERE Username LIKE '%";
     command+=username;
     command+="%'";
+    printf("%s\n", command.c_str());
+    return command;
+}
+
+string CDatabaseManager::stringifySendMessageRequestInsert(string userRequesting, string userRequested, string message){
+    string command="INSERT INTO Messages VALUES(NULL,'";
+    command+=userRequesting;
+    command+="','";
+    command+=userRequested;
+    command+="','";
+    command+=message;
+    command+="',curdate(),0)";
+    printf("%s\n", command.c_str());
     return command;
 }
 
@@ -213,22 +233,28 @@ string CDatabaseManager::getInitMainWindowResponse(string& username){
         return "initmain`no";
     }
     else{
-        if(!getNumberOfSelectedEntries())
-            return "firsttime"; 
+        //if(!getNumberOfSelectedEntries()) --dadea nul rezultatul daca faceam asta
+            //return "initmain`firsttime"; 
+        MYSQL_RES *result = mysql_store_result(con);
+        int numRows=mysql_num_rows(result);
+        if(!numRows)
+            return "initmain`firsttime"; 
         else {
-            MYSQL_RES *result = mysql_store_result(con);
             if (result == NULL){
                 printError(con);
             }
             int num_fields = mysql_num_fields(result);
             num_fields--; //nu vreau sa imi puna in raspuns si data maxima, nu ma intere
             MYSQL_ROW row;
-            string response;
+            string response="initmain`";
+            int index=0;
             while ((row = mysql_fetch_row(result))){
                 for(int i = 0; i < num_fields; i++){
+                    index++;
                     printf("%s ", row[i] ? row[i] : "NULL");
                     response+=row[i];
-                    response+="`";
+                    if(index<numRows || index==1)
+                        response+="`"; 
                 }
                 printf("\n");
             }
@@ -244,21 +270,25 @@ string CDatabaseManager::getInitMessageWindowResponse(string& userRequesting, st
         return "initmess`no";
     }
     else{
-        if(!getNumberOfSelectedEntries())
-            return "firsttime"; 
+        MYSQL_RES *result = mysql_store_result(con);
+        int numRows=mysql_num_rows(result);
+        if(!numRows)
+            return "initmess`firsttime"; 
         else {
-            MYSQL_RES *result = mysql_store_result(con);
             if (result == NULL){
                 printError(con);
             }
             int num_fields = mysql_num_fields(result);
             MYSQL_ROW row;
             string response;
+            int index=0;
             while ((row = mysql_fetch_row(result))){
+                index++;
                 for(int i = 0; i < num_fields; i++){
                     printf("%s ", row[i] ? row[i] : "NULL");
                     response+=row[i];
-                    response+="`";
+                    if(index<numRows)
+                        response+="`";
                 }
                 printf("\n");
             }
@@ -274,21 +304,25 @@ string CDatabaseManager::getSearchRequestResponse(string& username){
         return "search`no";
     }
     else{
-        if(!getNumberOfSelectedEntries())
+        MYSQL_RES *result = mysql_store_result(con);
+        int numRows=mysql_num_rows(result);
+        if(!numRows)
             return "search`no"; 
         else {
-            MYSQL_RES *result = mysql_store_result(con);
             if (result == NULL){
                 printError(con);
             }
             int num_fields = mysql_num_fields(result);
             MYSQL_ROW row;
-            string response;
+            string response="search`";
+            int index=0;
             while ((row = mysql_fetch_row(result))){
+                index++;
                 for(int i = 0; i < num_fields; i++){
                     printf("%s ", row[i] ? row[i] : "NULL");
                     response+=row[i];
-                    response+="`";
+                    if(index<numRows)
+                        response+="`";
                 }
                 printf("\n");
             }
@@ -299,5 +333,19 @@ string CDatabaseManager::getSearchRequestResponse(string& username){
 }
 
 string CDatabaseManager::getSendMessageRequestResponse(string& userRequesting, string& userRequested, string& message){
-    return "";
+    string command=stringifySendMessageRequestInsert(userRequesting, userRequested, message);
+    if(!getCommandExitStatus(command)){
+        return "message`no";
+    }
+    else
+        return "message`yes";
+}
+
+//nu uita de offline messages, sa pun la login un update al statusului, la true, la logout la false, cand se deconecteaza brusc, false
+string CDatabaseManager::getReceiveMessageServiceResponse(string& userRequesting, string& userRequested, string& message){
+    string response = "receive`";
+    response+=userRequesting;
+    response+="`";
+    response+=message;
+    return response;
 }

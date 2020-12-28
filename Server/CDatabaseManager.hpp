@@ -15,6 +15,7 @@ public:
     string getInitMessageWindowResponse(string& userRequesting, string& userRequested);
     string getSearchRequestResponse(string& username);
     string getSendMessageRequestResponse(string& userRequesting, string& userRequested, string& message);
+    string getReceiveMessageServiceResponse(string& userRequesting, string& userRequested, string& message);
 private:
     MYSQL* con;
     void printError(MYSQL* con);
@@ -28,5 +29,6 @@ private:
     string stringifyInitMainWindowSelect(string username);
     string stringifyInitMessageWindowSelect(string userRequesting, string userRequested);
     string stringifySearchRequestSelect(string username);
+    string stringifySendMessageRequestInsert(string userRequesting, string userRequested, string message);
     void closeConnectionToServer();
 };

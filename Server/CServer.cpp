@@ -145,13 +145,20 @@ void CServer::processMessage(CSocket* clientSocket, char* receivedMsg){
         string username;
         string password;
         parser->splitMessage(username, password);
+        pair<string, int> p;
+        p.first=username;
+        p.second=clientSocket->getSocketDescriptor();
+        connectionManager->insertPairToUserSocketMap(p);
         writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getSignupResponse(username, password).c_str());
-        
     }
     else if(operationType=="login"){
         string username;
         string password;
         parser->splitMessage(username, password);
+        pair<string, int> p;
+        p.first=username;
+        p.second=clientSocket->getSocketDescriptor();
+        connectionManager->insertPairToUserSocketMap(p);
         writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getLoginResponse(username, password).c_str());
     }    
     else if(operationType=="changeu"){
@@ -169,8 +176,9 @@ void CServer::processMessage(CSocket* clientSocket, char* receivedMsg){
         writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getChangePasswordResponse(newpassword, username, oldpassword).c_str());
     }   
     else if(operationType=="logout"){
-        //string username;
-        //parser->getToken(username);
+        string username;
+        parser->splitMessage(username);
+        connectionManager->deleteUserPairFromMap(username);
         writeToClient(clientSocket->getSocketDescriptor(), "logout`yes");
     }
     else if(operationType=="initmain"){
@@ -194,8 +202,8 @@ void CServer::processMessage(CSocket* clientSocket, char* receivedMsg){
         string userRequested;
         string message;
         parser->splitMessage(userRequesting, userRequested, message);
-        
-        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getSendMessageRequestResponse(userRequesting, userRequested, message).c_str());
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getSendMessageRequestResponse(userRequesting, userRequested, message));
+        writeToClient(connectionManager->getClientSocketDescriptorBasedOnUsername(userRequested), databaseManager->getReceiveMessageServiceResponse(userRequesting, userRequested, message));
     }
     else
         writeToClient(clientSocket->getSocketDescriptor(), "am primit un mesaj ciudat");

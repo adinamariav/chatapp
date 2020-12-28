@@ -124,3 +124,17 @@ void CConnectionManager::stop(){
     //You just need some more logic in the "threading stuff" to analyze what have actually happened. 
     //For example, test not_ended: if it is false, you know for sure that the error is intended, and that the shutdown is in progress; otherwise bla bla bla
 }
+
+void CConnectionManager::insertPairToUserSocketMap(pair<string, int>& p){
+    usernameToSocketMap.insert(p);
+}
+
+void CConnectionManager::deleteUserPairFromMap(string username){
+    usernameToSocketMap.erase(username);
+}
+
+int CConnectionManager::getClientSocketDescriptorBasedOnUsername(string username){
+    map<string, int>::iterator it;
+    it=usernameToSocketMap.find(username);
+    return it->second;
+}

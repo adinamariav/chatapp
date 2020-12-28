@@ -1,6 +1,7 @@
 #include "CSocket.hpp"
 #include <list>
 #include <vector>
+#include <map>
 
 class CConnectionManager{
 public:
@@ -13,10 +14,14 @@ public:
     vector<pollfd>& getClientPollSet();
     CSocket* findPollFDinList(int pollDescriptor);
     void deleteSocket(CSocket* clientToDelete, int index);
+    void insertPairToUserSocketMap(pair<string, int>& p);
+    void deleteUserPairFromMap(string username);
+    int getClientSocketDescriptorBasedOnUsername(string username);
 private:
     CSocket* serverSocket;
     list<CSocket*> clientSocketList;
     vector<pollfd> clientPollSet;
+    map<string, int> usernameToSocketMap;
     CSocket* getServerSocket();
     void addClientToList(CSocket* clientSocket);
     void addClientToPollSet(int clientSocketDescriptor);
