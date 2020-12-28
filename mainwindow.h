@@ -27,5 +27,6 @@ private:
 public slots:
     void registerAction();
     void loginAction();
+    void loginActionReceived(QString message);
 };
 #endif // MAINWINDOW_H

@@ -1,5 +1,6 @@
 #include "modifypasswindow.h"
 #include "ui_modifypasswindow.h"
+#include "chatlistener.h"
 
 ModifyPassWindow::ModifyPassWindow(std::string username, int socket, QWidget *parent) :
     QDialog(parent),
@@ -19,8 +20,17 @@ ModifyPassWindow::~ModifyPassWindow()
 
 void ModifyPassWindow::okAction()
 {
-    auto ans = interface->SendMessage(MessageGenerator::modifyPassword(QString::fromStdString(username), ui->oldPassEdit->text(), ui->newPassEdit->text()));
-    auto messagePieces = interface->SeparateMessage(ans);
+    interface->SendMessage(MessageGenerator::modifyPassword(QString::fromStdString(username), ui->oldPassEdit->text(), ui->newPassEdit->text()));
+}
+
+void ModifyPassWindow::cancelAction()
+{
+    this->hide();
+}
+
+void ModifyPassWindow::okActionReceived(QString message)
+{
+    auto messagePieces = interface->SeparateMessage(message.toStdString());
 
     if(interface->interpretMessage(messagePieces) == false)
     {
@@ -32,13 +42,11 @@ void ModifyPassWindow::okAction()
     this->hide();
 }
 
-void ModifyPassWindow::cancelAction()
-{
-    this->hide();
-}
-
 void ModifyPassWindow::setupConnections()
 {
+    auto listener = ChatListener::getInstance(interface->getSocket());
+
+    connect(listener, SIGNAL(receiveChangeP(QString)), this, SLOT(okActionReceived(QString)));
     connect(ui->buttonBox->button(QDialogButtonBox::Ok), &QPushButton::clicked, this, &ModifyPassWindow::okAction);
     connect(ui->buttonBox->button(QDialogButtonBox::Cancel), &QPushButton::clicked, this, &ModifyPassWindow::cancelAction);
 }

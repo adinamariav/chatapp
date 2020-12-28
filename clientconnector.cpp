@@ -42,39 +42,16 @@ void ClientConnector::initiateConnection()
     printf("Conectare cu succes\n");
 }
 
-std::string ClientConnector::SendMessage(const std::string Message)
+void ClientConnector::SendMessage(const std::string Message)
 {
     auto mes = Message.c_str();
     auto size = Message.size();
 
-   // write(this->CSocket, mes, size + 1);
-    sleep(2);
-
-    char Buffer[1024]; //pentru primirea raspunsului
-   // read(this->CSocket, Buffer, sizeof(Buffer));
-
-    std::string Answer = std::string(Buffer);
-
-    return Answer;
-}
-
-void ClientConnector::SendMessageVoid(const std::string Message)
-{
-    auto mes = Message.c_str();
-    auto size = Message.size();
     write(this->CSocket, mes, size + 1);
     sleep(2);
 }
 
-std::string ClientConnector::Listen()
-{
-    char Buffer[1024]; //pentru primirea raspunsului
-   // read(this->CSocket, Buffer, sizeof(Buffer));
 
-    std::string Answer = std::string(Buffer);
-
-    return Answer;
-}
 
 void ClientConnector::endConnection()
 {
@@ -83,21 +60,18 @@ void ClientConnector::endConnection()
     _exit(0);
 }
 
-QStringList ClientConnector::SeparateMessage(std::string message)
-{
-
-    QStringList messagePieces = QString::fromStdString(message).split("`");
-
-    return messagePieces;
-}
 
 bool ClientConnector::interpretMessage(QStringList message)
 {
     if(message.back() == "no")
-        return false;
+            return false;
     else
         if(message.back() == "yes")
             return true;
+    else
+        if(message.back() == "firsttime")
+            return true;
+
     return false;
 }
 
@@ -109,4 +83,12 @@ int ClientConnector::getSocket() const
 void ClientConnector::setSocket(const int &sock)
 {
     this->CSocket = sock;
+}
+
+QStringList ClientConnector::SeparateMessage(std::string message)
+{
+    QString mes = QString::fromStdString(message);
+    QStringList messagePieces = mes.split("`");
+
+    return messagePieces;
 }

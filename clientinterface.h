@@ -12,9 +12,7 @@ class ClientInterface
 public:
     ClientInterface();
 
-    virtual std::string SendMessage(const std::string message) = 0;
-    virtual std::string Listen() = 0;
-    virtual void SendMessageVoid(const std::string message) = 0;
+    virtual void SendMessage(const std::string message) = 0;
     virtual void initiateConnection() = 0;
     virtual void endConnection() = 0;
     virtual QStringList SeparateMessage(std::string message) = 0;

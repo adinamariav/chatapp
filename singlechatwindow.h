@@ -2,8 +2,6 @@
 #define SINGLECHATWINDOW_H
 
 #include "chatconversationhandler.h"
-#include "chatlistener.h"
-
 #include <QMainWindow>
 #include <QThread>
 
@@ -22,21 +20,22 @@ public:
 public slots:
     void sendAction();
     void receiveAction(QString message);
+    void initMessagesReceived(QStringList message);
 
 signals:
     void killHandler();
     void send(QString message);
+    void InitMessages();
 
 private:
     Ui::SIngleChatWindow *ui;
     ChatConversationHandler* handler;
-    ChatListener* listener;
     QString usernameFrom;
     QString usernameTo;
 
     void setupConnections();
     void createLogicThread(const int& socket);
-    void createListenerThread(const int& socket);
+    void initMessages();
 };
 
 #endif // SINGLECHATWINDOW_H

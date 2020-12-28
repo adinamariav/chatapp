@@ -17,13 +17,21 @@ public slots:
     void process();
     void finish();
     void sendMessage(QString message);
+    void sendMessageReceived(QString message);
+    void receive(QString message);
+    void InitMessages();
+    void initMessagesReceived(QString message);;
 
 signals:
     void finished();
+    void receiveMess(QString message);
+    void initMessages(QStringList message);
 
 private:
     QString usernameFrom;
     QString usernameTo;
+
+    void setupConnections();
 
 };
 

@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "registerwindow.h"
 #include "chatwindow.h"
+#include "chatlistener.h"
 
 MainWindow::MainWindow(int socket, QWidget *parent)
     : QMainWindow(parent)
@@ -19,8 +20,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupConnections()
 {
+    auto listener = ChatListener::getInstance(interface->getSocket());
     connect(ui->registerButton, &QPushButton::clicked, this, &MainWindow::registerAction);
     connect(ui->logInButton, &QPushButton::clicked, this, &MainWindow::loginAction);
+    connect(listener, SIGNAL(receiveLogin(QString)), this, SLOT(loginActionReceived(QString)));
 }
 
 void MainWindow::registerAction()
@@ -31,8 +34,12 @@ void MainWindow::registerAction()
 
 void MainWindow::loginAction()
 {
-    auto ans = interface->SendMessage(MessageGenerator::logIn(ui->userLineEdit->text(), ui->passLineEdit->text()));
-    auto processedAns = interface->SeparateMessage(ans);
+    interface->SendMessage(MessageGenerator::logIn(ui->userLineEdit->text(), ui->passLineEdit->text()));
+}
+
+void MainWindow::loginActionReceived(QString message)
+{
+    auto processedAns = interface->SeparateMessage(message.toStdString());
 
     if(interface->interpretMessage(processedAns) == false)
     {

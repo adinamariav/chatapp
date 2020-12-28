@@ -18,6 +18,9 @@ public:
 
 private:
     int CSocket;
+
+
+    void createListenerThread();
 };
 
 #endif // PROGRAMHANDLER_H

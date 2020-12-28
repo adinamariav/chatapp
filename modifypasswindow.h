@@ -23,6 +23,7 @@ public:
 public slots:
     void okAction();
     void cancelAction();
+    void okActionReceived(QString message);
 
 private:
     Ui::ModifyPassWindow *ui;

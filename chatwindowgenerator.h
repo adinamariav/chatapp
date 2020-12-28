@@ -12,7 +12,7 @@ class ChatWindowGenerator
 public:
     ChatWindowGenerator();
 
-    static SIngleChatWindow *getNewChatWindow(const QString& username);
+    static SIngleChatWindow *getNewChatWindow(const QString& usernameFrom, const QString& usernameTo, const int& socket);
 };
 
 #endif // CHATWINDOWGENERATOR_H

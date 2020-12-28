@@ -1,5 +1,6 @@
 #include "registerwindow.h"
 #include "ui_registerwindow.h"
+#include "chatlistener.h"
 
 registerWindow::registerWindow(int socket, QWidget *parent) :
     QDialog(parent),
@@ -17,9 +18,17 @@ registerWindow::~registerWindow()
 
 void registerWindow::okAction()
 {
-   // interface->initiateConnection();
-    auto ans = interface->SendMessage(MessageGenerator::signUp(ui->usernameEdit->text(), ui->passEdit->text()));
-    auto messagePieces = interface->SeparateMessage(ans);
+    interface->SendMessage(MessageGenerator::signUp(ui->usernameEdit->text(), ui->passEdit->text()));
+}
+
+void registerWindow::CancelAction()
+{
+    this->close();
+}
+
+void registerWindow::okActionReceived(QString message)
+{
+    auto messagePieces = interface->SeparateMessage(message.toStdString());
 
     if(interface->interpretMessage(messagePieces) == false)
     {
@@ -31,13 +40,11 @@ void registerWindow::okAction()
     this->close();
 }
 
-void registerWindow::CancelAction()
-{
-
-}
-
 void registerWindow::setupConnections()
 {
+    auto listener = ChatListener::getInstance(interface->getSocket());
     connect(ui->buttonBox->button(QDialogButtonBox::Ok), &QPushButton::clicked, this, &registerWindow::okAction);
     connect(ui->buttonBox->button(QDialogButtonBox::Cancel), &QPushButton::clicked, this, &registerWindow::CancelAction);
+    connect(listener, SIGNAL(receiveSignup(QString)), this, SLOT(okActionReceived(QString)));
+
 }

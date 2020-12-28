@@ -1,14 +1,16 @@
 #ifndef CHATLISTENER_H
 #define CHATLISTENER_H
 
-#include "communicator.h"
 #include <QObject>
+#include <sys/poll.h>
+#include "constants.h"
 
-class ChatListener : public QObject, public Communicator
+class ChatListener : public QObject
 {
     Q_OBJECT
 public:
-    explicit ChatListener(const QString& usernameFrom, const QString& usernameTo, const int& socket, QObject *parent = nullptr);
+    static ChatListener *getInstance(const int& socket);
+
 
 public slots:
     void process();
@@ -16,11 +18,29 @@ public slots:
 
 signals:
     void finished();
-    void receive(QString message);
+    void receiveLogin(QString message);
+    void receiveLogout(QString message);
+    void receiveSignup(QString message);
+    void receiveChangeU(QString message);
+    void receiveChangeP(QString message);
+    void receiveInitU(QString message);
+    void receiveInitW(QString message);
+    void receiveSearch(QString message);
+    void receiveSendM(QString message);
+    void receiveMess(QString message);
 
 private:
-    QString usernameFrom;
-    QString usernameTo;
+    //int CSocket;
+    pollfd Poll;
+
+    static ChatListener *instance;
+
+    explicit ChatListener(const int& socket, QObject *parent = nullptr);
+    QString Listen();
+    QStringList SeparateMessage(QString message);
+    void emitSignal(const QString& answer);
+
+    void setupConnections();
 
 };
 

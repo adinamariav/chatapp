@@ -1,31 +1,34 @@
 #include "chatlistener.h"
+#include "mainwindow.h"
 
-ChatListener::ChatListener(const QString& usernameFrom, const QString& usernameTo, const int& socket, QObject *parent) :
-    QObject(parent),
-    usernameFrom(usernameFrom),
-    usernameTo(usernameTo)
+ChatListener* ChatListener::instance =  nullptr;
+
+ChatListener::ChatListener(const int& socket, QObject *parent) :
+    QObject(parent)
 {
-    interface->setSocket(socket);
+   Poll.fd = socket;
+   Poll.events = POLLIN;
 }
 
+
+ChatListener *ChatListener::getInstance(const int &socket)
+{
+    if(instance == nullptr)
+    {
+        instance = new ChatListener(socket);
+    }
+
+    return instance;
+}
 
 void ChatListener::process()
 {
     while(1)
     {
-        auto mess = interface->Listen();
+        auto mess = this->Listen();
         if(mess != "")
         {
-            auto messPieces = interface->SeparateMessage(mess);
-            if(messPieces.front() == "receive")
-            {
-                auto piece = messPieces.begin();
-                piece++;
-                if(*piece == this->usernameFrom)
-                {
-                    emit receive(QString::fromStdString(mess));
-                }
-            }
+           emit emitSignal(mess);
         }
     }
 }
@@ -33,5 +36,63 @@ void ChatListener::process()
 void ChatListener::finish()
 {
     emit finished();
+}
+
+QString ChatListener::Listen()
+{
+    char Buffer[1024]; //pentru primirea raspunsului
+
+    while(1)
+    {
+        poll(&Poll, 1, 5000);
+        if(Poll.revents & POLLIN)
+        {
+            Poll.revents = 0;
+            memset(Buffer, 0, 1024);
+            read(Poll.fd, Buffer, 1024);
+            std::string Answer = std::string(Buffer);
+            return QString::fromStdString(Answer);
+        }
+    }
+}
+
+QStringList ChatListener::SeparateMessage(QString message)
+{
+    QStringList messagePieces = message.split("`");
+
+    return messagePieces;
+}
+
+
+void ChatListener::emitSignal(const QString &answer)
+{
+    auto messPieces = this->SeparateMessage(answer);
+    auto command = messPieces.front().toStdString();
+
+    if(command == Constants::Login)
+        emit receiveLogin(answer);
+    if(command == Constants::Logout)
+        emit receiveLogout(answer);
+    if(command == Constants::SignUp)
+        emit receiveSignup(answer);
+    if(command == Constants::ChangeUsername)
+        emit receiveChangeU(answer);
+    if(command == Constants::ChangePassword)
+        emit receiveChangeP(answer);
+    if(command == Constants::InitUsers)
+        emit receiveInitU(answer);
+    if(command == Constants::InitWindow)
+        emit receiveInitW(answer);
+    if(command == Constants::SearchUsers)
+        emit receiveSearch(answer);
+    if(command == Constants::SendMessage)
+        emit receiveSendM(answer);
+    if(command == Constants::ReceiveMessage)
+        emit receiveMess(answer);
+}
+
+void ChatListener::setupConnections()
+{
+   //QObject::connect(this, SIGNAL(emitSignal(QString)), MainWindow, SLOT(process()));
 }
 

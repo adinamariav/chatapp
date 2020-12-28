@@ -22,6 +22,10 @@ public:
 public slots:
     void okAction();
     void CancelAction();
+    void okActionReceived(QString message);
+
+signals:
+    void usernameChanged(QString newUsername);
 
 private:
     Ui::ModifyNameWindow *ui;

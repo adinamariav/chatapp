@@ -8,9 +8,10 @@ SIngleChatWindow::SIngleChatWindow(const QString& usernameFrom, const QString& u
     usernameTo(usernameTo)
 {
     ui->setupUi(this);
-    setupConnections();
     createLogicThread(socket);
-    createListenerThread(socket);
+    setupConnections();
+    this->setWindowTitle(usernameTo);
+    initMessages();
 }
 
 SIngleChatWindow::~SIngleChatWindow()
@@ -38,11 +39,39 @@ void SIngleChatWindow::receiveAction(QString message)
     ui->listWidget->addItem(newItem);
 }
 
+void SIngleChatWindow::initMessagesReceived(QStringList message)
+{
+    auto iter1 = message.begin();
+    iter1++;
+
+    if(*iter1 == "firsttime")
+        return;
+
+    for(auto iter = message.begin(); iter != message.end(); iter++)
+    {
+        if(*iter == this->usernameTo)
+        {
+            iter++;
+            auto newItem = new QListWidgetItem(*iter, ui->listWidget);
+            ui->listWidget->addItem(newItem);
+        }
+        else
+        {
+            iter++;
+            auto newItem = new QListWidgetItem(*iter, ui->listWidget);
+            newItem->setTextAlignment(Qt::AlignmentFlag::AlignRight);
+            ui->listWidget->addItem(newItem);
+        }
+    }
+}
+
 void SIngleChatWindow::setupConnections()
 {
     connect(ui->sendButton, &QPushButton::clicked, this, &SIngleChatWindow::sendAction);
-    connect(this, SIGNAL(send(QString)), handler, SLOT(ChatConversationHandler::sendMessage(QString)));
-    connect(handler, SIGNAL(receive(QString)), this, SLOT(receiveAction()));
+    connect(this, SIGNAL(send(QString)), handler, SLOT(sendMessage(QString)));
+    connect(handler, SIGNAL(receiveMess(QString)), this, SLOT(receiveAction(QString)));
+    connect(handler, SIGNAL(initMessages(QStringList)), this, SLOT(initMessagesReceived(QStringList)));
+    connect(this, SIGNAL(InitMessages()), handler, SLOT(InitMessages()));
 }
 
 void SIngleChatWindow::createLogicThread(const int& socket)
@@ -60,18 +89,9 @@ void SIngleChatWindow::createLogicThread(const int& socket)
     thread->start();
 }
 
-void SIngleChatWindow::createListenerThread(const int& socket)
+void SIngleChatWindow::initMessages()
 {
-    QThread* thread = new QThread;
-    this->listener = new ChatListener(usernameFrom, usernameTo, socket);
-    handler->moveToThread(thread);
-
-    QObject::connect(thread, SIGNAL(started()), listener, SLOT(process()));
-    QObject::connect(this, SIGNAL(killHandler()), listener, SLOT(finish()));
-    QObject::connect(listener, SIGNAL(finished()), thread, SLOT(quit()));
-    QObject::connect(listener, SIGNAL(finished()), listener, SLOT(deleteLater()));
-    QObject::connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
-
-    thread->start();
+    emit InitMessages();
 }
+
 

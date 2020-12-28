@@ -20,7 +20,13 @@ public:
 public slots:
     void modifyPassAction();
     void modifyNameAction();
+    void changeUsername(QString newUsername);
+    void expandAction();
     void logoutAction();
+    void searchAction();
+    void logoutActionReceived(QString message);
+    void initActionReceived(QString message);
+    void searchActionReceived(QString message);
 
 private:
     Ui::ChatWindow *ui;

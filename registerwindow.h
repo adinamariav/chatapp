@@ -23,6 +23,7 @@ public:
 public slots:
     void okAction();
     void CancelAction();
+    void okActionReceived(QString message);
 
 private:
     Ui::registerWindow *ui;
