@@ -173,6 +173,30 @@ void CServer::processMessage(CSocket* clientSocket, char* receivedMsg){
         //parser->getToken(username);
         writeToClient(clientSocket->getSocketDescriptor(), "logout`yes");
     }
+    else if(operationType=="initmain"){
+        string username;
+        parser->splitMessage(username);
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getInitMainWindowResponse(username).c_str());
+    }
+    else if(operationType=="initmess"){
+        string userRequesting;
+        string userRequested;
+        parser->splitMessage(userRequesting, userRequested);
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getInitMessageWindowResponse(userRequesting, userRequested).c_str());
+    }
+    else if(operationType=="search"){
+        string username;
+        parser->splitMessage(username);
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getSearchRequestResponse(username).c_str());
+    }
+    else if(operationType=="send"){
+        string userRequesting;
+        string userRequested;
+        string message;
+        parser->splitMessage(userRequesting, userRequested, message);
+        
+        writeToClient(clientSocket->getSocketDescriptor(), databaseManager->getSendMessageRequestResponse(userRequesting, userRequested, message).c_str());
+    }
     else
         writeToClient(clientSocket->getSocketDescriptor(), "am primit un mesaj ciudat");
     

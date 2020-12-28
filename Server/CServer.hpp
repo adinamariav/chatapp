@@ -13,14 +13,15 @@ public:
     static void destroyInstance();
     void initConnectionSetup();
     void readClientData();
-    void* readFromClients(); //returneaza void* si primeste ca arg void*, pt thread, o fct membru implicit primeste ca argument *this pointer
     void readAdminCommands();
-    void* manageServer();
+    
 private:
     static CServer *instance; 
     CServer(string IPaddress, int portNumber);
     ~CServer();
     CConnectionManager* connectionManager;
+    void* readFromClients(); //returneaza void* si primeste ca arg void*, pt thread, o fct membru implicit primeste ca argument *this pointer
+    void* manageServer();
     int stopThread2;
     void startReading(int fd, int index);
     CParser* parser;

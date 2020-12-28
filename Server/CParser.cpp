@@ -22,6 +22,10 @@ void CParser::getToken(string& token){
     printf ("%s\n", token.c_str());
 }
 
+void CParser::splitMessage(string& firstContainer){
+    getToken(firstContainer);
+}
+
 void CParser::splitMessage(string& firstContainer, string& secondContainer){
     getToken(firstContainer);
     getToken(secondContainer);
